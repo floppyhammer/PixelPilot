@@ -1256,11 +1256,11 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
             }
             String info = "%dx%d@%.0f " + (decodingInfo.nCodec == 1 ? " H265 " : " H264 ")
                     + (decodingInfo.currentKiloBitsPerSecond > 1000 ? " %.1fMbps " : " %.1fKpbs ")
-                    + " %.1fms";
+                    + " %.1fms"  + " %.1fms";
             binding.tvVideoStats.setText(String.format(Locale.US, info,
                     lastVideoW, lastVideoH, decodingInfo.currentFPS,
                     decodingInfo.currentKiloBitsPerSecond / 1000,
-                    decodingInfo.avgTotalDecodingTime_ms));
+                    decodingInfo.avgTotalDecodingTime_ms, decodingInfo.avgTransmissionTime_ms));
         });
     }
 

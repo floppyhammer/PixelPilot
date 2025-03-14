@@ -334,7 +334,7 @@ extern "C"
             {
                 jclass jcDecodingInfo = env->FindClass("com/openipc/videonative/DecodingInfo");
                 assert(jcDecodingInfo != nullptr);
-                jmethodID jcDecodingInfoConstructor = env->GetMethodID(jcDecodingInfo, "<init>", "(FFFFFIIII)V");
+                jmethodID jcDecodingInfoConstructor = env->GetMethodID(jcDecodingInfo, "<init>", "(FFFFFFIIII)V");
                 assert(jcDecodingInfoConstructor != nullptr);
                 const auto info         = p->latestDecodingInfo;
                 auto       decodingInfo = env->NewObject(
@@ -345,8 +345,9 @@ extern "C"
                     (jfloat) info.avgParsingTime_ms,
                     (jfloat) info.avgWaitForInputBTime_ms,
                     (jfloat) info.avgDecodingTime_ms,
+                    (jfloat) info.avgTransmissionTime_ms,
                     (jint) info.nNALU,
-                    (jint) info.nNALUSFeeded,
+                    (jint) info.nNALUSFed,
                     (jint) info.nDecodedFrames,
                     (jint) info.nCodec);
                 assert(decodingInfo != nullptr);

@@ -27,12 +27,13 @@ void VideoDecoder::setOutputSurface(JNIEnv* env, jobject surface, jint idx)
     if (surface == nullptr)
     {
         MLOGD << "Set output null surface idx: " << idx;
-        // assert(decoder.window!=nullptr);
+
         if (decoder.window[idx] == nullptr && decoder.codec[idx] == nullptr)
         {
             // MLOGD<<"Decoder window is already null";
             return;
         }
+
         std::lock_guard<std::mutex> lock(mMutexInputPipe);
         inputPipeClosed = true;
         if (decoder.configured[idx])
@@ -83,8 +84,12 @@ void VideoDecoder::interpretNALU(const NALU& nalu)
     // TODO: RN switching between h264 / h265 requires re-setting the surface
     IS_H265             = nalu.IS_H265_PACKET;
     decodingInfo.nCodec = IS_H265;
+
+    transmissionTime.add(steady_clock::now() - nalu.creationTime);
+
     // we need this lock, since the receiving/parsing/feeding does not run on the same thread who sets the input surface
     std::lock_guard<std::mutex> lock(mMutexInputPipe);
+
     decodingInfo.nNALU++;
     if (nalu.getSize() <= 4)
     {
@@ -92,31 +97,35 @@ void VideoDecoder::interpretNALU(const NALU& nalu)
         return;
     }
     nNALUBytesFed.add(nalu.getSize());
+
     if (inputPipeClosed)
     {
         MLOGD << "inputPipeClosed.";
-        // A feedD thread (e.g. file or udp) thread might be running even tough no output surface was set
+        // A feedD thread (e.g. file or udp) thread might be running even though no output surface was set
         // But at least we can buffer the sps/pps data
         mKeyFrameFinder.saveIfKeyFrame(nalu);
         return;
     }
+
     if (decoder.configured[0] || decoder.configured[1])
     {
         feedDecoder(nalu, 0);
         feedDecoder(nalu, 1);
-        decodingInfo.nNALUSFeeded++;
-        // manually feeding AUDs doesn't seem to change anything for high latency streams
+        decodingInfo.nNALUSFed++;
+
+        // Manually feeding AUDs doesn't seem to change anything for high latency streams
         // Only for the x264 sw encoded example stream it might improve latency slightly
         // if(!nalu.IS_H265_PACKET && nalu.get_nal_unit_type()==NAL_UNIT_TYPE_CODED_SLICE_NON_IDR){
         // MLOGD<<"Feeding special AUD";
         // feedDecoder(NALU::createExampleH264_AUD());
-        //}
+        // }
     }
     else
     {
-        // Store sps,pps, vps(H265 only)
-        // As soon as enough data has been buffered to initialize the decoder,do so.
+        // Store sps, pps, vps (H265 only)
+        // As soon as enough data has been buffered to initialize the decoder, do so.
         mKeyFrameFinder.saveIfKeyFrame(nalu);
+
         if (mKeyFrameFinder.allKeyFramesAvailable(IS_H265))
         {
             MLOGD << "Configuring decoder...";
@@ -153,7 +162,7 @@ void VideoDecoder::configureStartDecoder(int idx)
         h264_configureAMediaFormat(mKeyFrameFinder, format);
     }
 
-    MLOGD << "Configuring decoder:" << AMediaFormat_toString(format);
+    MLOGD << "Configuring decoder: " << AMediaFormat_toString(format);
 
     auto status = AMediaCodec_configure(decoder.codec[idx], format, decoder.window[idx], nullptr, 0);
     AMediaFormat_delete(format);
@@ -203,6 +212,7 @@ void VideoDecoder::configureStartDecoder(int idx)
         // mKeyFrameFinder.reset();
         return;
     }
+
     AMediaCodec_start(decoder.codec[idx]);
     mCheckOutputThread[idx] = std::make_unique<std::thread>(&VideoDecoder::checkOutputLoop, this, idx);
     NDKThreadHelper::setName(mCheckOutputThread[idx]->native_handle(), "LLDCheckOutput");
@@ -214,6 +224,7 @@ void VideoDecoder::feedDecoder(const NALU& nalu, int idx)
     if (!decoder.codec[idx]) return;
     const auto now          = std::chrono::steady_clock::now();
     const auto deltaParsing = now - nalu.creationTime;
+
     while (true)
     {
         const auto index = AMediaCodec_dequeueInputBuffer(decoder.codec[idx], BUFFER_TIMEOUT_US);
@@ -221,21 +232,26 @@ void VideoDecoder::feedDecoder(const NALU& nalu, int idx)
         {
             size_t   inputBufferSize;
             uint8_t* buf = AMediaCodec_getInputBuffer(decoder.codec[idx], (size_t) index, &inputBufferSize);
+
             // I have not seen any case where the input buffer returned by MediaCodec is too small to hold the NALU
             // But better be safe than crashing with a memory exception
             if (nalu.getSize() > inputBufferSize)
             {
-                MLOGD << "Nalu too big" << nalu.getSize();
+                MLOGD << "NALU size is too big: " << nalu.getSize();
                 return;
             }
 
             int flag =
                 (IS_H265 && (nalu.isSPS() || nalu.isPPS() || nalu.isVPS())) ? AMEDIACODEC_BUFFER_FLAG_CODEC_CONFIG : 0;
+
             std::memcpy(buf, nalu.getData(), (size_t) nalu.getSize());
+
             const uint64_t presentationTimeUS =
                 (uint64_t) duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
+
             AMediaCodec_queueInputBuffer(
                 decoder.codec[idx], (size_t) index, 0, (size_t) nalu.getSize(), presentationTimeUS, flag);
+
             waitForInputB.add(steady_clock::now() - now);
             parsingTime.add(deltaParsing);
             return;
@@ -266,13 +282,17 @@ void VideoDecoder::feedDecoder(const NALU& nalu, int idx)
 void VideoDecoder::checkOutputLoop(int idx)
 {
     NDKThreadHelper::setProcessThreadPriorityAttachDetach(javaVm, -16, "DecoderCheckOutput");
+
     AMediaCodecBufferInfo info;
     bool                  decoderSawEOS          = false;
     bool                  decoderProducedUnknown = false;
+
     while (!decoderSawEOS && !decoderProducedUnknown)
     {
         if (!decoder.codec[idx]) break;
+
         const ssize_t index = AMediaCodec_dequeueOutputBuffer(decoder.codec[idx], &info, BUFFER_TIMEOUT_US);
+
         if (index >= 0)
         {
             const auto    now   = steady_clock::now();
@@ -283,8 +303,8 @@ void VideoDecoder::checkOutputLoop(int idx)
             // https://android.googlesource.com/platform/frameworks/av/+/3fdb405/media/libstagefright/MediaCodec.cpp
             //-> Message kWhatReleaseOutputBuffer -> onReleaseOutputBuffer
             //  also https://android.googlesource.com/platform/frameworks/native/+/5c1139f/libs/gui/SurfaceTexture.cpp
-            if (!decoder.codec[idx]) break;
             AMediaCodec_releaseOutputBuffer(decoder.codec[idx], (size_t) index, true);
+
             // but the presentationTime is in US
             if (idx == 0)
             {
@@ -301,9 +321,11 @@ void VideoDecoder::checkOutputLoop(int idx)
         else if (index == AMEDIACODEC_INFO_OUTPUT_FORMAT_CHANGED)
         {
             auto format = AMediaCodec_getOutputFormat(decoder.codec[idx]);
-            int  width = 0, height = 0;
+
+            int width = 0, height = 0;
             AMediaFormat_getInt32(format, AMEDIAFORMAT_KEY_WIDTH, &width);
             AMediaFormat_getInt32(format, AMEDIAFORMAT_KEY_HEIGHT, &height);
+
             MLOGD << "Actual Width and Height in output " << width << "," << height;
             if (idx == 0 && onDecoderRatioChangedCallback != nullptr && width != 0 && height != 0)
             {
@@ -369,8 +391,9 @@ void VideoDecoder::printAvgLog()
                      << "\nParsing:" << decodingInfo.avgParsingTime_ms
                      << " | WaitInputBuffer:" << decodingInfo.avgWaitForInputBTime_ms
                      << " | Decoding:" << decodingInfo.avgDecodingTime_ms
-                     << " | Decoding Latency Sum:" << avgDecodingLatencySum << "\nN NALUS:" << decodingInfo.nNALU
-                     << " | N NALUES feeded:" << decodingInfo.nNALUSFeeded
+                     << " | Transmission Latency:" << decodingInfo.avgTransmissionTime_ms
+                     << " | Decoding Latency Sum:" << avgDecodingLatencySum << "\nN NALUs:" << decodingInfo.nNALU
+                     << " | N NALUs fed:" << decodingInfo.nNALUSFed
                      << " | N Decoded Frames:" << nDecodedFrames.getAbsolute() << "\nFPS:" << decodingInfo.currentFPS
                      << " | Codec:" << (decodingInfo.nCodec ? "H265" : "H264");
             MLOGD << frameLog.str();

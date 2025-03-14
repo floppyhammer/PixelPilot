@@ -20,7 +20,7 @@ struct DecodingInfo
 {
     std::chrono::steady_clock::time_point lastCalculation          = std::chrono::steady_clock::now();
     long                                  nNALU                    = 0;
-    long                                  nNALUSFeeded             = 0;
+    long                                  nNALUSFed                = 0;
     long                                  nDecodedFrames           = 0;
     long                                  nCodec                   = 0;
     float                                 currentFPS               = 0;
@@ -28,12 +28,14 @@ struct DecodingInfo
     float                                 avgParsingTime_ms        = 0;
     float                                 avgWaitForInputBTime_ms  = 0;
     float                                 avgDecodingTime_ms       = 0;
+    float                                 avgTransmissionTime_ms        = 0;
 
     bool operator==(const DecodingInfo& d2) const
     {
-        return nNALU == d2.nNALU && nNALUSFeeded == d2.nNALUSFeeded && currentFPS == d2.currentFPS &&
+        return nNALU == d2.nNALU && nNALUSFed == d2.nNALUSFed && currentFPS == d2.currentFPS &&
                currentKiloBitsPerSecond == d2.currentKiloBitsPerSecond && avgParsingTime_ms == d2.avgParsingTime_ms &&
-               avgWaitForInputBTime_ms == d2.avgWaitForInputBTime_ms && avgDecodingTime_ms == d2.avgDecodingTime_ms;
+               avgWaitForInputBTime_ms == d2.avgWaitForInputBTime_ms && avgDecodingTime_ms == d2.avgDecodingTime_ms &&
+               avgTransmissionTime_ms == d2.avgTransmissionTime_ms;
     }
 
     bool operator!=(const DecodingInfo& d2) const { return !(*this == d2); }
@@ -125,6 +127,7 @@ class VideoDecoder
     AvgCalculator                         parsingTime;
     AvgCalculator                         waitForInputB;
     AvgCalculator                         decodingTime;
+    AvgCalculator                         transmissionTime;
     // Every n ms re-calculate the Decoding info
     static const constexpr auto DECODING_INFO_RECALCULATION_INTERVAL = std::chrono::milliseconds(1000);
     static constexpr const bool PRINT_DEBUG_INFO                     = true;
