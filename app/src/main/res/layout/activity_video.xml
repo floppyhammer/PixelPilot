@@ -23,7 +23,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/surfaceViewRight"/>
+        app:layout_constraintEnd_toStartOf="@id/surfaceViewRight"/>
 
     <SurfaceView
         android:id="@+id/surfaceViewRight"
@@ -74,6 +74,7 @@
         android:layout_height="wrap_content"
         android:text="Loading..."
         android:textColor="@color/colorWhite"
+        android:textSize="24sp"
         android:translationZ="10dp"
         android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -86,6 +87,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="@color/colorWhite"
+        android:textSize="24sp"
         android:translationY="28dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
