@@ -99,8 +99,8 @@ public class OSDManager {
         listOSDItems.add(new OSDElement("Timer", binding.itemTimer));
         listOSDItems.add(new OSDElement("Total Distance", binding.itemTotDis));
         listOSDItems.add(new OSDElement("Video Decoding", binding.itemVideoStats));
-        listOSDItems.add(new OSDElement("Video Link Txt", binding.itemLinkStatus));
-        listOSDItems.add(new OSDElement("Video Link Graph", binding.itemLinkStatusChart));
+        listOSDItems.add(new OSDElement("Video Link Status", binding.itemLinkStatus));
+        listOSDItems.add(new OSDElement("Video Link Status Graph", binding.itemLinkStatusChart));
         restoreOSDConfig();
     }
 
@@ -218,6 +218,7 @@ public class OSDManager {
         };
         binding.tvFlightMode.setText(flightMode);
 
+        // Video status
         if (!Objects.equals(currentFCStatus, data.status_text)) {
             currentFCStatus = data.status_text;
             binding.tvStatus.setVisibility(View.VISIBLE);
