@@ -595,7 +595,10 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
     private void setupChannelSubMenu(PopupMenu popup) {
         SubMenu chnMenu = popup.getMenu().addSubMenu("Channel");
         int channelPref = getChannel(this);
-        chnMenu.setHeaderTitle("Current: " + channelPref);
+
+        // Create a disabled item to act as the header
+        MenuItem headerItem = chnMenu.add("Current: " + channelPref);
+        headerItem.setEnabled(false); // Makes it unclickable and grayed out like a label
 
         String[] channels = getResources().getStringArray(R.array.channels);
         for (String chnStr : channels) {
@@ -612,7 +615,10 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
     private void setupBandwidthSubMenu(PopupMenu popup) {
         SubMenu bwMenu = popup.getMenu().addSubMenu("Bandwidth");
         int bandwidthPref = getBandwidth(this);
-        bwMenu.setHeaderTitle("Current: " + bandwidthPref);
+
+        // Add a disabled item to act as the header
+        MenuItem headerItem = bwMenu.add("Current: " + bandwidthPref);
+        headerItem.setEnabled(false); // Visually looks like a header, but unclickable
 
         String[] bws = getResources().getStringArray(R.array.bandwidths);
         for (String bwStr : bws) {
@@ -815,7 +821,7 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
                 .show();
     }
 
-    void initDefaultOptions(){
+    void initDefaultOptions() {
         SharedPreferences prefs = getSharedPreferences("general", MODE_PRIVATE);
         boolean adaptiveEnabled = prefs.getBoolean("adaptive_link_enabled", true);
         int adaptiveTxPower = prefs.getInt("adaptive_tx_power", 20);
@@ -1211,8 +1217,7 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
                 // VPN permission not granted
                 Log.e(TAG, "VPN permission was not granted by the user.");
             }
-        }
-        else {
+        } else {
             Log.w(TAG, "onActivityResult: unknown request code " + requestCode);
         }
     }
