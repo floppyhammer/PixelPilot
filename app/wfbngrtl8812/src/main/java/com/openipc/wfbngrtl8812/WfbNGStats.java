@@ -12,9 +12,10 @@ public class WfbNGStats {
     public final int count_p_bad;
     public final int count_p_override;
     public final int count_p_outgoing;
+    public final int avg_rssi;
 
     public WfbNGStats(int cntPall, int cntDecErr, int cntDecOk, int cntFecRec,
-                      int cntLost, int cntBad, int cntOverride, int cntOutgoing) {
+                      int cntLost, int cntBad, int cntOverride, int cntOutgoing, int avgRssi) {
         count_p_all = cntPall;
         count_p_dec_err = cntDecErr;
         count_p_dec_ok = cntDecOk;
@@ -23,5 +24,6 @@ public class WfbNGStats {
         count_p_bad = cntBad;
         count_p_override = cntOverride;
         count_p_outgoing = cntOutgoing;
+        avg_rssi = avgRssi;
     }
 }

@@ -511,10 +511,9 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
         chart.getDescription().setEnabled(false);
         chart.setDrawHoleEnabled(true);
         chart.setHoleColor(Color.WHITE);
-        chart.setTransparentCircleColor(Color.WHITE);
-        chart.setTransparentCircleAlpha(110);
-        chart.setHoleRadius(58f);
-        chart.setTransparentCircleRadius(61f);
+        chart.setHoleRadius(75f);
+        chart.setCenterTextSize(12);
+        chart.setCenterText("RSSI");
         chart.setHighlightPerTapEnabled(false);
         chart.setRotationEnabled(false);
         chart.setClickable(false);
@@ -809,11 +808,26 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
                 .setView(layout)
                 .setPositiveButton("OK", (dialog, which) -> {
                     SharedPreferences.Editor editor = prefs.edit();
-                    try { editor.putInt("fec_lost_to_5", Integer.parseInt(edits[0].getText().toString())); } catch (Exception ignored) {}
-                    try { editor.putInt("fec_recovered_to_4", Integer.parseInt(edits[1].getText().toString())); } catch (Exception ignored) {}
-                    try { editor.putInt("fec_recovered_to_3", Integer.parseInt(edits[2].getText().toString())); } catch (Exception ignored) {}
-                    try { editor.putInt("fec_recovered_to_2", Integer.parseInt(edits[3].getText().toString())); } catch (Exception ignored) {}
-                    try { editor.putInt("fec_recovered_to_1", Integer.parseInt(edits[4].getText().toString())); } catch (Exception ignored) {}
+                    try {
+                        editor.putInt("fec_lost_to_5", Integer.parseInt(edits[0].getText().toString()));
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        editor.putInt("fec_recovered_to_4", Integer.parseInt(edits[1].getText().toString()));
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        editor.putInt("fec_recovered_to_3", Integer.parseInt(edits[2].getText().toString()));
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        editor.putInt("fec_recovered_to_2", Integer.parseInt(edits[3].getText().toString()));
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        editor.putInt("fec_recovered_to_1", Integer.parseInt(edits[4].getText().toString()));
+                    } catch (Exception ignored) {
+                    }
                     editor.apply();
                     setFecThresholdsFromPrefs();
                 })
@@ -1428,6 +1442,7 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
             if (data.count_p_all > 0) {
                 binding.tvMessage.setVisibility(View.INVISIBLE);
                 binding.tvMessage.setText("");
+
                 if (data.count_p_dec_err > 0) {
                     binding.tvLinkStatus.setText("Waiting for session key.");
                 } else {
@@ -1437,23 +1452,36 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
                     entries.add(new PieEntry((float) data.count_p_dec_ok / data.count_p_all));
                     entries.add(new PieEntry((float) data.count_p_fec_recovered / data.count_p_all));
                     entries.add(new PieEntry((float) data.count_p_lost / data.count_p_all));
+
                     PieDataSet dataSet = new PieDataSet(entries, "Link Status");
                     dataSet.setDrawIcons(false);
                     dataSet.setDrawValues(false);
+
                     ArrayList<Integer> colors = new ArrayList<>();
                     colors.add(getColor(R.color.colorGreen));
                     colors.add(getColor(R.color.colorYellow));
                     colors.add(getColor(R.color.colorRed));
                     dataSet.setColors(colors);
+
                     PieData pieData = new PieData(dataSet);
                     pieData.setValueFormatter(new PercentFormatter());
                     pieData.setValueTextSize(11f);
                     pieData.setValueTextColor(Color.WHITE);
 
+                    int rssiColor = getColor(R.color.colorGreenBg);
+                    if (data.avg_rssi < 40 && 20 <= data.avg_rssi) {
+                        rssiColor = getColor(R.color.colorYellow);
+                    } else if (data.avg_rssi < 20) {
+                        rssiColor = getColor(R.color.colorRed);
+                    }
+
                     binding.pcLinkStat.setData(pieData);
-                    binding.pcLinkStat.setCenterText("" + data.count_p_fec_recovered);
+                    binding.pcLinkStat.setCenterTextSize(24);
+                    binding.pcLinkStat.setCenterText("" + data.avg_rssi);
+                    binding.pcLinkStat.setCenterTextColor(rssiColor);
                     binding.pcLinkStat.invalidate();
 
+                    // Set link icon tint color.
                     int color = getColor(R.color.colorGreenBg);
                     if ((float) data.count_p_fec_recovered / data.count_p_all > 0.2) {
                         color = getColor(R.color.colorYellowBg);
@@ -1462,14 +1490,15 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
                         color = getColor(R.color.colorRedBg);
                     }
                     binding.imgLinkStatus.setImageTintList(ColorStateList.valueOf(color));
-                    binding.tvLinkStatus.setText(String.format("O%sD%sR%sL%s",
-                            paddedDigits(data.count_p_outgoing, 6),
-                            paddedDigits(data.count_p_dec_ok, 6),
-                            paddedDigits(data.count_p_fec_recovered, 6),
-                            paddedDigits(data.count_p_lost, 6)));
+
+                    binding.tvLinkStatus.setText(String.format("Outgoing %3d Decoded %3d Recovered %3d Lost %3d",
+                            data.count_p_outgoing,
+                            data.count_p_dec_ok,
+                            data.count_p_fec_recovered,
+                            data.count_p_lost));
                 }
             } else {
-                binding.tvLinkStatus.setText("No wfb-ng data.");
+                binding.tvLinkStatus.setText("No Video Link");
             }
         });
     }
