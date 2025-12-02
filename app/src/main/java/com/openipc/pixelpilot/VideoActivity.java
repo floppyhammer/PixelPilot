@@ -1469,9 +1469,9 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
                     pieData.setValueTextColor(Color.WHITE);
 
                     int rssiColor = getColor(R.color.colorGreenBg);
-                    if (data.avg_rssi < 40 && 20 <= data.avg_rssi) {
+                    if (data.avg_rssi < 60 && 30 <= data.avg_rssi) {
                         rssiColor = getColor(R.color.colorYellow);
-                    } else if (data.avg_rssi < 20) {
+                    } else if (data.avg_rssi < 30) {
                         rssiColor = getColor(R.color.colorRed);
                     }
 
