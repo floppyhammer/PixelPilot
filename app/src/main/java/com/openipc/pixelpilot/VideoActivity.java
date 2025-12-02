@@ -1476,7 +1476,7 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
                     }
 
                     binding.pcLinkStat.setData(pieData);
-                    binding.pcLinkStat.setCenterTextSize(24);
+                    binding.pcLinkStat.setCenterTextSize(22);
                     binding.pcLinkStat.setCenterText("" + data.avg_rssi);
                     binding.pcLinkStat.setCenterTextColor(rssiColor);
                     binding.pcLinkStat.invalidate();
