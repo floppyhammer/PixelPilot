@@ -85,7 +85,7 @@ SignalQualityCalculator::SignalQuality SignalQualityCalculator::calculate_signal
 
     //    __android_log_print(ANDROID_LOG_DEBUG, TAG, "avg_rssi: %f", avg_rssi);
 
-    // Map the RSSI from range 10..80 to -1024..1024
+    // Map the RSSI from range 0..80 to -1024..1024
     avg_rssi = map_range(avg_rssi, 0.f, 80.f, -1024.f, 1024.f);
     avg_rssi = std::max(-1024.f, std::min(1024.f, avg_rssi));
 

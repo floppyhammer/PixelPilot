@@ -374,12 +374,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_openipc_wfbngrtl8812_WfbNgLink_native
     SignalQualityCalculator::get_instance().add_fec_data(
         aggregator->count_p_all, aggregator->count_p_fec_recovered, aggregator->count_p_lost);
 
-    float avg_rssi = 0;
-    for (auto it = aggregator->antenna_stat.begin(); it != aggregator->antenna_stat.end(); it++) {
-        avg_rssi += (float)it->second.rssi_sum / (float)it->second.count_all;
-    }
-    avg_rssi /= aggregator->antenna_stat.size();
-    uint32_t avg_rssi_int = round(map_range(avg_rssi, 0.f, 80.f, 0.f, 100.f));
+    auto quality = SignalQualityCalculator::get_instance().calculate_signal_quality();
+    uint32_t avg_rssi_int = round(map_range(quality.quality, -1024.f, 1024.f, 0.f, 100.f));
 
     auto stats = env->NewObject(jcStats,
                                 jcStatsConstructor,
