@@ -112,6 +112,9 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
     private ConstraintSet constraintSet;
     private WfbNgLink wfbLink;
 
+    private static final String PREF_DRONE_USERNAME = "drone_username";
+    private static final String PREF_DRONE_PASSWORD = "drone_password";
+
     public boolean getVRSetting() {
         return getSharedPreferences("general", Context.MODE_PRIVATE).getBoolean("vr-mode", false);
     }
@@ -908,6 +911,13 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
             startBrowser();
             return true;
         });
+
+        // Add a new option to manage login credentials
+        MenuItem loginCredentials = drone.add("Login Credentials");
+        loginCredentials.setOnMenuItemClickListener(item -> {
+            showLoginCredentialsDialog();
+            return true;
+        });
     }
 
     /**
@@ -1529,6 +1539,88 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
         }
     }
 
+    private void showLoginCredentialsDialog() {
+        // Create a LinearLayout to hold our EditText fields
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(50, 30, 50, 30); // Add some padding around the content
+
+        // EditText for username
+        final android.widget.EditText usernameEditText = new android.widget.EditText(this);
+        usernameEditText.setHint("Username");
+        usernameEditText.setText(getDroneUsername()); // Pre-fill with current saved username
+        layout.addView(usernameEditText);
+
+        // EditText for password
+        final android.widget.EditText passwordEditText = new android.widget.EditText(this);
+        passwordEditText.setHint("Password");
+        // Mask the password input
+        passwordEditText.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        passwordEditText.setText(getDronePassword()); // Pre-fill with current saved password
+        layout.addView(passwordEditText);
+
+        // CheckBox to toggle password visibility
+        final android.widget.CheckBox showPasswordCheckBox = new android.widget.CheckBox(this);
+        showPasswordCheckBox.setText("Show Password");
+        layout.addView(showPasswordCheckBox);
+
+        // Set a listener for the CheckBox
+        showPasswordCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                // If checked, show the password (visible_password)
+                passwordEditText.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+            } else {
+                // If unchecked, hide the password (password)
+                passwordEditText.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            }
+            // Move the cursor to the end of the text to prevent it from jumping to the beginning
+            passwordEditText.setSelection(passwordEditText.getText().length());
+        });
+
+        // Build and show the AlertDialog
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Drone Login Credentials")
+                .setView(layout) // Set our custom layout
+                .setPositiveButton("Save", (dialog, which) -> {
+                    // Save the new values to SharedPreferences
+                    setDroneUsername(usernameEditText.getText().toString());
+                    setDronePassword(passwordEditText.getText().toString());
+                    Toast.makeText(this, "Drone credentials saved.", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancel", (dialog, which) -> {
+                    dialog.cancel(); // Dismiss the dialog
+                })
+                .show();
+    }
+
+    // Helper method to retrieve the drone username
+    // Provides a default "root" if not yet set, for initial compatibility.
+    private String getDroneUsername() {
+        return getSharedPreferences("general", Context.MODE_PRIVATE).getString(PREF_DRONE_USERNAME, "root");
+    }
+
+    // Helper method to save the drone username
+    private void setDroneUsername(String username) {
+        SharedPreferences prefs = getSharedPreferences("general", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString(PREF_DRONE_USERNAME, username);
+        editor.apply();
+    }
+
+    // Helper method to retrieve the drone password
+    // Provides a default "12345" if not yet set, for initial compatibility.
+    private String getDronePassword() {
+        return getSharedPreferences("general", Context.MODE_PRIVATE).getString(PREF_DRONE_PASSWORD, "12345");
+    }
+
+    // Helper method to save the drone password
+    private void setDronePassword(String password) {
+        SharedPreferences prefs = getSharedPreferences("general", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString(PREF_DRONE_PASSWORD, password);
+        editor.apply();
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     public void startBrowser() {
         WebView view = new WebView(this);
@@ -1552,7 +1644,10 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
             @Override
             public void onReceivedHttpAuthRequest(
                     WebView view, HttpAuthHandler handler, String host, String realm) {
-                handler.proceed("root", "12345");
+                // Retrieve username and password from SharedPreferences
+                String username = getDroneUsername();
+                String password = getDronePassword();
+                handler.proceed(username, password);
             }
         });
     }
