@@ -45,11 +45,6 @@ import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.core.content.FileProvider;
 import androidx.documentfile.provider.DocumentFile;
 
-import com.github.mikephil.charting.charts.PieChart;
-import com.github.mikephil.charting.data.PieData;
-import com.github.mikephil.charting.data.PieDataSet;
-import com.github.mikephil.charting.data.PieEntry;
-import com.github.mikephil.charting.formatter.PercentFormatter;
 import com.openipc.mavlink.MavlinkData;
 import com.openipc.mavlink.MavlinkNative;
 import com.openipc.mavlink.MavlinkUpdate;
@@ -259,9 +254,6 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
 
         // OSD Manager Setup
         setupOSDManager();
-
-        // PieChart Setup
-        setupPieChart();
 
         // Button Handlers
         setupButtonHandlers();
@@ -499,31 +491,6 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
     private void setupOSDManager() {
         osdManager = new OSDManager(this, binding);
         osdManager.setUp();
-    }
-
-    // ----------------------------------------------------------------------------
-    // PIECHART SETUP
-    // ----------------------------------------------------------------------------
-
-    /**
-     * Initializes and configures the PieChart to show link statistics (initially empty).
-     */
-    private void setupPieChart() {
-        PieChart chart = binding.pcLinkStat;
-        chart.getLegend().setEnabled(false);
-        chart.getDescription().setEnabled(false);
-        chart.setDrawHoleEnabled(true);
-        chart.setHoleColor(Color.WHITE);
-        chart.setHoleRadius(75f);
-        chart.setCenterTextSize(12);
-        chart.setCenterText("RSSI");
-        chart.setHighlightPerTapEnabled(false);
-        chart.setRotationEnabled(false);
-        chart.setClickable(false);
-        chart.setTouchEnabled(false);
-
-        PieData emptyData = new PieData(new PieDataSet(new ArrayList<>(), ""));
-        chart.setData(emptyData);
     }
 
     // ----------------------------------------------------------------------------
@@ -1454,42 +1421,16 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
                 binding.tvMessage.setText("");
 
                 if (data.count_p_dec_err > 0) {
-                    binding.tvLinkStatus.setText("Waiting for session key.");
+                    binding.tvLinkStatus.setText("Waiting for session key");
                 } else {
-                    // NOTE: The order of the entries when being added to the entries array
-                    // determines their position around the center of the chart.
-                    ArrayList<PieEntry> entries = new ArrayList<>();
-                    entries.add(new PieEntry((float) data.count_p_dec_ok / data.count_p_all));
-                    entries.add(new PieEntry((float) data.count_p_fec_recovered / data.count_p_all));
-                    entries.add(new PieEntry((float) data.count_p_lost / data.count_p_all));
-
-                    PieDataSet dataSet = new PieDataSet(entries, "Link Status");
-                    dataSet.setDrawIcons(false);
-                    dataSet.setDrawValues(false);
-
-                    ArrayList<Integer> colors = new ArrayList<>();
-                    colors.add(getColor(R.color.colorGreen));
-                    colors.add(getColor(R.color.colorYellow));
-                    colors.add(getColor(R.color.colorRed));
-                    dataSet.setColors(colors);
-
-                    PieData pieData = new PieData(dataSet);
-                    pieData.setValueFormatter(new PercentFormatter());
-                    pieData.setValueTextSize(11f);
-                    pieData.setValueTextColor(Color.WHITE);
-
-                    int rssiColor = getColor(R.color.colorGreenBg);
-                    if (data.avg_rssi < 60 && 30 <= data.avg_rssi) {
-                        rssiColor = getColor(R.color.colorYellow);
-                    } else if (data.avg_rssi < 30) {
-                        rssiColor = getColor(R.color.colorRed);
+                    int linkScoreColor = getColor(R.color.colorGreenBg);
+                    if (data.avg_link_score < 60 && 30 <= data.avg_link_score) {
+                        linkScoreColor = getColor(R.color.colorYellow);
+                    } else if (data.avg_link_score < 30) {
+                        linkScoreColor = getColor(R.color.colorRed);
                     }
-
-                    binding.pcLinkStat.setData(pieData);
-                    binding.pcLinkStat.setCenterTextSize(22);
-                    binding.pcLinkStat.setCenterText("" + data.avg_rssi);
-                    binding.pcLinkStat.setCenterTextColor(rssiColor);
-                    binding.pcLinkStat.invalidate();
+                    binding.pbLinkScore.setProgress(data.avg_link_score, true);
+                    binding.pbLinkScore.setProgressTintList(ColorStateList.valueOf(linkScoreColor));
 
                     // Set link icon tint color.
                     int color = getColor(R.color.colorGreenBg);
@@ -1501,7 +1442,9 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
                     }
                     binding.imgLinkStatus.setImageTintList(ColorStateList.valueOf(color));
 
-                    binding.tvLinkStatus.setText(String.format("Outgoing %3d Decoded %3d Recovered %3d Lost %3d",
+                    binding.tvLinkStatus.setText(String.format("[Quality] RSSI %3d SNR %3d\n[FEC] Output %3d Decoded %3d Recovered %3d Lost %3d",
+                            data.avg_rssi,
+                            data.avg_snr,
                             data.count_p_outgoing,
                             data.count_p_dec_ok,
                             data.count_p_fec_recovered,

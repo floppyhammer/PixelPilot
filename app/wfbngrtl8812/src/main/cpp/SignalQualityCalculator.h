@@ -15,8 +15,9 @@ class SignalQualityCalculator {
     struct SignalQuality {
         int lost_last_second;
         int recovered_last_second;
-        int quality;
+        int rssi;
         float snr;
+        float link_score; // Calculated based on RSSI and SNR [0, 100].
         std::string idr_code;
     };
 
@@ -29,7 +30,7 @@ class SignalQualityCalculator {
 
     void add_fec_data(uint32_t p_all, uint32_t p_recovered, uint32_t p_lost);
 
-    template <class T> float get_avg(const T &array) {
+    template <class T> std::pair<float, float> get_average(const T &array) {
         std::lock_guard<std::recursive_mutex> lock(m_mutex);
 
         // Remove old entries
@@ -48,9 +49,7 @@ class SignalQualityCalculator {
             sum2 /= count;
         }
 
-        // We'll take the maximum of the two average RSSI values
-        float avg = std::max(sum1, sum2);
-        return avg;
+        return {sum1, sum2};
     }
 
     SignalQuality calculate_signal_quality();
@@ -91,7 +90,11 @@ class SignalQualityCalculator {
     };
 
     double map_range(double value, double inputMin, double inputMax, double outputMin, double outputMax) {
-        return outputMin + ((value - inputMin) * (outputMax - outputMin) / (inputMax - inputMin));
+        // Map
+        double val = outputMin + (value - inputMin) * (outputMax - outputMin) / (inputMax - inputMin);
+        // Clamp
+        val = std::max(outputMin, std::min(outputMax, val));
+        return val;
     }
 
   private:

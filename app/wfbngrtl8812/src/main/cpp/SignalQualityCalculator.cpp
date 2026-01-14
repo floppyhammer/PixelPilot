@@ -79,31 +79,32 @@ SignalQualityCalculator::SignalQuality SignalQualityCalculator::calculate_signal
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
 
     // Get fresh averages over the last second
-    float avg_rssi = get_avg(m_rssis);
+    auto avg_rssi = get_average(m_rssis);
+    auto avg_snr = get_average(m_snrs);
 
-    float avg_snr = get_avg(m_snrs);
+    // Map the RSSI from range 0..126 to 0..100
+    float rssi0 = map_range(avg_rssi.first, 0.f, 126.f, 0.f, 100.f);
+    float rssi1 = map_range(avg_rssi.second, 0.f, 126.f, 0.f, 100.f);
 
-    //    __android_log_print(ANDROID_LOG_DEBUG, TAG, "avg_rssi: %f", avg_rssi);
+    // Map the SNR from range 0..60 to 0..100
+    float snr0 = map_range(avg_snr.first, 0.f, 60.f, 0.f, 100.f);
+    float snr1 = map_range(avg_snr.second, 0.f, 60.f, 0.f, 100.f);
 
-    // Map the RSSI from range 0..80 to -1024..1024
-    avg_rssi = map_range(avg_rssi, 0.f, 80.f, -1024.f, 1024.f);
-    avg_rssi = std::max(-1024.f, std::min(1024.f, avg_rssi));
+    // Link Score = (w1 * RSSI) + (w2 * SNR)
+    float link_score0 = 0.5f * rssi0 + 0.5f * snr0;
+    float link_score1 = 0.5f * rssi1 + 0.5f * snr1;
 
-    // Return final clamped quality
-    // formula: quality = avg_rssi - p_recovered * 5 - p_lost * 100
-    // clamp between -1024 and 1024
     auto [p_recovered, p_lost] = get_accumulated_fec_data();
 
-    //    __android_log_print(ANDROID_LOG_ERROR, "DEBUG", "FEC RECOVERED %d, FEC_LOST %d", p_recovered, p_lost);
-
-    float quality = avg_rssi; // - static_cast<float>(p_recovered) * 12.f - static_cast<float>(p_lost) * 40.f;
-    quality = std::max(-1024.f, std::min(1024.f, quality));
-
-    ret.quality = quality;
     ret.lost_last_second = p_lost;
     ret.recovered_last_second = p_recovered;
 
-    ret.snr = avg_snr;
+    // We don't change the ranges for RSSI and SNR.
+    ret.rssi = std::max(avg_rssi.first, avg_rssi.second);
+    ret.snr = std::max(avg_snr.first, avg_snr.second);
+
+    ret.link_score = std::max(link_score0, link_score1);
+
     ret.idr_code = m_idr_code;
 
     cleanup_old_rssi_data();
