@@ -73,7 +73,6 @@ void SignalQualityCalculator::add_snr(int8_t ant1, int8_t ant2) {
     m_snrs.push_back(entry);
 }
 
-// Calculate signal quality based on last-second RSSI and FEC data
 SignalQualityCalculator::SignalQuality SignalQualityCalculator::calculate_signal_quality() {
     SignalQuality ret;
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
@@ -82,34 +81,34 @@ SignalQualityCalculator::SignalQuality SignalQualityCalculator::calculate_signal
     auto avg_rssi = get_average(m_rssis);
     auto avg_snr = get_average(m_snrs);
 
-    // Map the RSSI from range 0..126 to 0..100
-    float rssi0 = map_range(avg_rssi.first, 0.f, 126.f, 0.f, 100.f);
-    float rssi1 = map_range(avg_rssi.second, 0.f, 126.f, 0.f, 100.f);
-
-    // Map the SNR from range 0..60 to 0..100
-    float snr0 = map_range(avg_snr.first, 0.f, 60.f, 0.f, 100.f);
-    float snr1 = map_range(avg_snr.second, 0.f, 60.f, 0.f, 100.f);
-
-    // Link Score = (w1 * RSSI) + (w2 * SNR)
-    float link_score0 = 0.5f * rssi0 + 0.5f * snr0;
-    float link_score1 = 0.5f * rssi1 + 0.5f * snr1;
-
     auto [p_recovered, p_lost] = get_accumulated_fec_data();
 
     ret.lost_last_second = p_lost;
     ret.recovered_last_second = p_recovered;
 
     // We don't change the ranges for RSSI and SNR.
-    ret.rssi = std::max(avg_rssi.first, avg_rssi.second);
-    ret.snr = std::max(avg_snr.first, avg_snr.second);
-
-    ret.link_score = std::max(link_score0, link_score1);
+    ret.rssi = round(std::max(avg_rssi.first, avg_rssi.second));
+    ret.snr = round(std::max(avg_snr.first, avg_snr.second));
 
     ret.idr_code = m_idr_code;
 
     cleanup_old_rssi_data();
     cleanup_old_snr_data();
     cleanup_old_fec_data();
+
+    // RSSI falls in range [0, 126], and we map it from range [0, 126] to [1000, 2000].
+    float rssi0 = map_range(avg_rssi.first, 50.f, 110.f, 1000.f, 2000.f);
+    float rssi1 = map_range(avg_rssi.second, 50.f, 110.f, 1000.f, 2000.f);
+
+    // SNR falls in range [0, 60], and we map it from range [0, 60] to [1000, 2000].
+    float snr0 = map_range(avg_snr.first, 20.f, 50.f, 1000.f, 2000.f);
+    float snr1 = map_range(avg_snr.second, 20.f, 50.f, 1000.f, 2000.f);
+
+    // Link Score = (weight1 * RSSI) + (weight2 * SNR)
+    // See https://github.com/OpenIPC/adaptive-link
+    int link_score0 = round(0.5f * rssi0 + 0.5f * snr0);
+    int link_score1 = round(0.5f * rssi1 + 0.5f * snr1);
+    ret.link_score = std::max(link_score0, link_score1);
 
     /* __android_log_print(ANDROID_LOG_DEBUG,
                          TAG,
@@ -119,6 +118,7 @@ SignalQualityCalculator::SignalQuality SignalQualityCalculator::calculate_signal
                          p_recovered,
                          p_lost);
  */
+
     return ret;
 }
 

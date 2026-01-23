@@ -173,7 +173,8 @@
                 android:layout_width="200dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
-                android:max="100"
+                android:min="1000"
+                android:max="2000"
                 android:progress="0"
                 android:progressDrawable="@drawable/custom_progressbar" />
         </com.openipc.pixelpilot.osd.MovableLayout>

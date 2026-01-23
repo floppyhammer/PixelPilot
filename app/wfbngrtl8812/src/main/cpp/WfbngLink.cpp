@@ -370,9 +370,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_openipc_wfbngrtl8812_WfbNgLink_native
         aggregator->count_p_all, aggregator->count_p_fec_recovered, aggregator->count_p_lost);
 
     auto quality = SignalQualityCalculator::get_instance().calculate_signal_quality();
-    uint32_t rssi = quality.rssi;
-    uint32_t snr = round(quality.snr);
-    uint32_t link_score = round(quality.link_score);
 
     auto stats = env->NewObject(jcStats,
                                 jcStatsConstructor,
@@ -384,9 +381,9 @@ extern "C" JNIEXPORT void JNICALL Java_com_openipc_wfbngrtl8812_WfbNgLink_native
                                 (jint)aggregator->count_p_bad,
                                 (jint)aggregator->count_p_override,
                                 (jint)aggregator->count_p_outgoing,
-                                (jint)rssi,
-                                (jint)snr,
-                                (jint)link_score);
+                                (jint)quality.rssi,
+                                (jint)quality.snr,
+                                (jint)quality.link_score);
     if (stats == nullptr) {
         return;
     }
@@ -433,7 +430,7 @@ void WfbngLink::start_link_quality_thread(int fd) {
             auto quality = SignalQualityCalculator::get_instance().calculate_signal_quality();
 
 #if defined(ANDROID_DEBUG_RSSI) || true
-            __android_log_print(ANDROID_LOG_WARN, TAG, "link score %.1f", quality.link_score);
+            __android_log_print(ANDROID_LOG_WARN, TAG, "link score %d", quality.link_score);
 #endif
 
             time_t currentEpoch = time(nullptr);
@@ -441,9 +438,6 @@ void WfbngLink::start_link_quality_thread(int fd) {
                 [](double value, double inputMin, double inputMax, double outputMin, double outputMax) {
                     return outputMin + ((value - inputMin) * (outputMax - outputMin) / (inputMax - inputMin));
                 };
-
-            // Map to 1000..2000
-            int link_score = round(map_range(quality.link_score, 0, 100, 1000, 2000));
 
             {
                 uint32_t len;
@@ -485,12 +479,12 @@ void WfbngLink::start_link_quality_thread(int fd) {
                          sizeof(message) - sizeof(len),
                          "%ld:%d:%d:%d:%d:%d:%f:0:-1:%d:%s\n",
                          static_cast<long>(currentEpoch),
-                         link_score,
-                         link_score,
+                         quality.link_score,
+                         quality.link_score,
                          quality.recovered_last_second,
                          quality.lost_last_second,
                          quality.rssi,
-                         quality.snr,
+                         (float)quality.snr,
                          fec.value(),
                          quality.idr_code.c_str());
                 len = strlen(message + sizeof(len));

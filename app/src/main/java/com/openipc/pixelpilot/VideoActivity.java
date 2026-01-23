@@ -1424,9 +1424,9 @@ public class VideoActivity extends AppCompatActivity implements IVideoParamsChan
                     binding.tvLinkStatus.setText("Waiting for session key");
                 } else {
                     int linkScoreColor = getColor(R.color.colorGreenBg);
-                    if (data.avg_link_score < 60 && 30 <= data.avg_link_score) {
+                    if (data.avg_link_score < 1600 && 1300 <= data.avg_link_score) {
                         linkScoreColor = getColor(R.color.colorYellow);
-                    } else if (data.avg_link_score < 30) {
+                    } else if (data.avg_link_score < 1300) {
                         linkScoreColor = getColor(R.color.colorRed);
                     }
                     binding.pbLinkScore.setProgress(data.avg_link_score, true);

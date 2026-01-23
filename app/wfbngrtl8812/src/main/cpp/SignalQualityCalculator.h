@@ -15,9 +15,9 @@ class SignalQualityCalculator {
     struct SignalQuality {
         int lost_last_second;
         int recovered_last_second;
-        int rssi;
-        float snr;
-        float link_score; // Calculated based on RSSI and SNR [0, 100].
+        int rssi;       // Received signal strength indicator
+        int snr;        // Signal to noice ratio
+        int link_score; // Based on RSSI and SNR [1000, 2000]
         std::string idr_code;
     };
 
@@ -52,6 +52,7 @@ class SignalQualityCalculator {
         return {sum1, sum2};
     }
 
+    /// Calculate signal quality based on last-second RSSI and FEC data
     SignalQuality calculate_signal_quality();
 
     static SignalQualityCalculator &get_instance() {
